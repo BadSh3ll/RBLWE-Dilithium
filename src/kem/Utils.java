@@ -4,11 +4,7 @@ public class Utils {
     
 
     public static void printPoly(Poly poly) {
-        StringBuilder sb = new StringBuilder();
-        for (int coeff : poly.getCoeffs()) {
-            sb.append(coeff).append(" ");
-        }
-        System.out.println(sb.toString().trim());
+        System.out.println(poly.toString());
     }
 
 

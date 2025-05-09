@@ -72,22 +72,7 @@ public class Poly {
         return mult(this, b);
     }
 
-    // Pointwise multiplication of two polynomials
-    public static Poly pointwise(Poly a, Poly b) {
-        Poly result = new Poly();
-        for (int i = 0; i < Kem.N; i++) {
-            result.coeffs[i] = reduce(a.coeffs[i] * b.coeffs[i]);
-        }
-        return result;
-    }
-
-    public Poly pointwise(Poly b) {
-        return pointwise(this, b);
-    }
-
-
-
-    private static int reduce(int x) {
+    public static int reduce(int x) {
         int t = (x * Kem.QINV) >> 24;
         int result = x - t * Kem.Q;   
 
@@ -99,5 +84,17 @@ public class Poly {
         return result;
     }
 
+    public String toString() {
+        StringBuffer sb = new StringBuffer();
+        sb.append("[");
+        for (int i = 0; i < coeffs.length; i++) {
+            if (i != 0) {
+                sb.append(", ");
+            }
+            sb.append("" + coeffs[i]);
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 
 }

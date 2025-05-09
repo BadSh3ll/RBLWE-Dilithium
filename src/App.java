@@ -1,65 +1,113 @@
+import java.security.KeyPair;
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 import kem.*;
-
+import sign.*;
 
 public class App {
     public static void main(String[] args) throws Exception {
+        test_kem();
+        test_sig();
+        test_both();
+        System.out.println("All tests passed");  
+    }
 
-        int fails = 0;
-        for (int i = 0; i < 1000; i++) {
-            try {
-                test();
-            } catch (Exception e) {
-                fails++;
-                System.out.println("Test failed: " + e.getMessage());
+
+    public static void test_both() throws Exception {
+        byte[] seed = new byte[32];
+        (new SecureRandom()).nextBytes(seed);
+
+        KeyPair KemKeyPair = Kem.keygen();
+        KeyPair SignKeyPair = Dilithium.keygen(seed);
+
+        int msg[] = new int[Kem.N];
+        Rng.sampleNoise(msg);
+
+        CipherText enc = Kem.encapsulate((KemPublicKey) KemKeyPair.getPublic(), msg);
+        byte[] sig = Dilithium.sign((DilithiumPrivateKey) SignKeyPair.getPrivate(), enc.getC1().toString().getBytes());
+
+
+        int[] dec = Kem.decapsulate((KemPrivateKey) KemKeyPair.getPrivate(), enc);
+        boolean valid = Dilithium.verify((DilithiumPublicKey) SignKeyPair.getPublic(), sig, enc.getC1().toString().getBytes());
+
+        if (dec.length != msg.length) {
+            throw new Exception("Decryption failed");
+        }
+        for (int i = 0; i < msg.length; i++) {
+            if (dec[i] != msg[i]) {
+                throw new Exception("Decryption failed");
             }
         }
 
-        System.out.println("Total failures: " + fails);
-        
-
-    }
-
-    public static void test() throws Exception {
-        // Alice keygen
-        Poly a = new Poly();
-        Rng.randomInt(a.getCoeffs());
-
-        Poly r1, r2;
-        r1 = new Poly();
-        r2 = new Poly();
-        Rng.sampleNoise(r1.getCoeffs());
-        Rng.sampleNoise(r2.getCoeffs());
-
-        Poly p = Poly.sub(r1, a.mult(r2));
-
-        // Bob select and encrypt m
-        int[] m = new int[Kem.N];
-        Rng.sampleNoise(m);
-
-        Poly mhat = new Poly(m);
-        Poly e1, e2, e3;
-        e1 = new Poly();
-        e2 = new Poly();
-        e3 = new Poly();
-        Rng.sampleNoise(e1.getCoeffs());
-        Rng.sampleNoise(e2.getCoeffs());
-        Rng.sampleNoise(e3.getCoeffs());
-
-        Poly c1 = Poly.add(Poly.mult(a, e1), e2);
-        Poly c2 = Poly.add(Poly.mult(p, e1), e3.add(mhat));
-
-
-        // Alice decrypts
-        Poly mhat1 = Poly.mult(c1, r2).add(c2);
-
-        int[] m2 = Utils.recon(mhat1);
-        if (!Arrays.equals(m, m2)) {
-            throw new Exception("Decryption failed: " + Arrays.toString(m) + " != " + Arrays.toString(m2));
+        if (!valid) {
+            throw new Exception("Signature verification failed");
         }
     }
 
+    public static void test_kem() throws Exception {
 
+        int fails = 0;
+
+        for (int i = 0; i < 1000; i++) {
+            byte[] seed = new byte[32];
+            (new SecureRandom()).nextBytes(seed);
+
+            KeyPair KemKeyPair = Kem.keygen();
+            KeyPair alteredKeyPair = Kem.keygen();
+
+            int msg[] = new int[Kem.N];
+            Rng.sampleNoise(msg);
+
+            CipherText enc = Kem.encapsulate((KemPublicKey) KemKeyPair.getPublic(), msg);
+            
+            int[] dec = Kem.decapsulate((KemPrivateKey) KemKeyPair.getPrivate(), enc);
+            int[] alteredDec = Kem.decapsulate((KemPrivateKey) alteredKeyPair.getPrivate(), enc);
+
+            boolean shouldEquals = Arrays.equals(msg, dec);
+            boolean shouldNotEquals = !Arrays.equals(msg, alteredDec);
+            if (!shouldEquals || !shouldNotEquals) {
+                fails++;
+            }
+        }
+
+        if (fails > 0) {
+            throw new Exception("Decryption failed " + fails + " times");
+        } else {
+            System.out.println("Decryption passed");
+        }
+
+    }
+
+    public static void test_sig() throws Exception {
+
+        int fails = 0;
+
+        for (int i = 0; i < 1000; i++) {
+                byte[] seed = new byte[32];
+                (new SecureRandom()).nextBytes(seed);
+        
+                KeyPair kp = Dilithium.keygen(seed);
+                KeyPair alteredKeyPair = Dilithium.keygen(null);
+        
+                byte[] msg = new byte[Kem.N];
+                (new SecureRandom()).nextBytes(msg);
+        
+                byte[] sig = Dilithium.sign((DilithiumPrivateKey) kp.getPrivate(), msg);
+                boolean shouldBeValid = Dilithium.verify((DilithiumPublicKey) kp.getPublic(), sig, msg);
+                boolean shouldBeInValid = Dilithium.verify((DilithiumPublicKey) alteredKeyPair.getPublic(), sig, msg);
+                
+                if (!shouldBeValid || shouldBeInValid) {
+                    fails++;
+                }
+            
+        }
+        if (fails > 0) {
+            throw new Exception("Signature verification failed " + fails + " times");
+        } else {
+            System.out.println("Signature verification passed");
+        }
+
+    }
 
 }

@@ -25,11 +25,11 @@ public class App {
         Rng.sampleNoise(msg);
 
         CipherText enc = Kem.encapsulate((KemPublicKey) KemKeyPair.getPublic(), msg);
-        byte[] sig = Dilithium.sign((DilithiumPrivateKey) SignKeyPair.getPrivate(), enc.getC1().toString().getBytes());
+        byte[] sig = Dilithium.sign((DilithiumPrivateKey) SignKeyPair.getPrivate(), msg.toString().getBytes());
 
 
         int[] dec = Kem.decapsulate((KemPrivateKey) KemKeyPair.getPrivate(), enc);
-        boolean valid = Dilithium.verify((DilithiumPublicKey) SignKeyPair.getPublic(), sig, enc.getC1().toString().getBytes());
+        boolean valid = Dilithium.verify((DilithiumPublicKey) SignKeyPair.getPublic(), sig, msg.toString().getBytes());
 
         if (dec.length != msg.length) {
             throw new Exception("Decryption failed");
